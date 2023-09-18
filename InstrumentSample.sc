@@ -102,7 +102,7 @@ InstrumentSample {
 		arg id,note,amp,buf1,buf2,buf1mix,rate;
 		var notename=1000000.rand;
 		var node;
-		[notename,note,amp,buf1,buf2,buf1mix,rate].postln;
+		// [notename,note,amp,buf1,buf2,buf1mix,rate].postln;
 		if (syns.at(id).isNil,{
 			syns.put(id,Dictionary.new());
 		});
@@ -205,12 +205,10 @@ InstrumentSample {
 			file2=file2++(rr2.rand+1).asString++".0.wav";			
 		});
 
-		[file1,file2,amp,rate].postln;
+		// [file1,file2,amp,rate].postln;
 
 		Buffer.read(server,PathName(folder+/+file1).fullPath,action:{ arg b1;
-			b1.postln;
 			Buffer.read(server,PathName(folder+/+file2).fullPath,action:{ arg b2;
-				b2.postln;
 				this.doPlay(id,noteOriginal,amp,b1,b2,buf1mix,rate);
 			});
 		});

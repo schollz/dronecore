@@ -54,8 +54,10 @@ s.waitForBoot({
 		output = RLPF.ar(output, (env*freq*0.7) + (freq * lfo.value.range(0.1,2)), lfo.value.range(0.2,1));
 		output = Splay.ar(output, lfo.value.range(0,1));
 		output = output * env * amp;
-		Out.ar(0, output * 0.1);
+		Out.ar(0, output * 24.neg.dbamp);
 	}).add;
+
+
 
 
 	i=InstrumentSample.new(Server.default);
@@ -65,14 +67,13 @@ s.waitForBoot({
 		[5,7,9],
 		[3,5,8],
 		[1,3,5],
-		// [1,3,6],
-		// [1,4,6],
-		// [1,3,5],
-		// [0,3,5],
+		[1,3,6],
+		[1,4,6],
+		[1,3,5],
+		[0,3,5],
 	];
-	~bass=[-2,4,1,3];
-	~bass=[4,5,1,1];
-	~chord=0;
+	~bass=[-2,4,1,3,4,5,1,1];
+	~chord=~chords.size.rand;
 	~instrument="claus_piano";
 	~noteMain=48;
 	~lastNote=0;
@@ -82,23 +83,24 @@ s.waitForBoot({
 		inf.do{
 			x.set(\freq,(~scale.wrapAt(~bass[~chord]+6)+~noteMain-12).midicps);
 			3.do({ arg j;
-				var ind=~chords[~chord][j]+[0,0,0,0,0,0,1,1,-1,2,-2].choose+6;
+				var ind=~chords[~chord][j]+[0,0,0,0,0,0,0,1,1,1,-1,-1,-1,2,-2].choose+6;
 				var note=~scale.wrapAt(ind)+~noteMain;
-				note.postln;
+				["note",note].postln;
 				([4,3,3,2,2,2.5,1.5,1,1,1,1,1,0.5,0.25,0,0].choose*2).wait;
-				i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,
-					note.asInteger+(~octave.getSynchronous),
-					~velocity.getSynchronous
-				);
 				if (7.rand<2,{
 					if (~lastNote>0,{
 						i.noteOff(1,~lastNote);
 					});
 					~lastNote=note;
 					i.noteOn(1,"/home/zns/Documents/dronecore/samples/string_spurs_swells",~lastNote,5+5.rand);
+				},{
+					i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,
+						note.asInteger+(~octave.getSynchronous),
+						~velocity.getSynchronous
+					);
 				});
 			});
-			([6,4,3,2,2,2.5,1.5,1,1,1,1,1,0.5].choose*4).wait;
+			// ([6,4,3,2,2,2.5,1.5,1,1,1,1,1,0.5].choose*4).wait;
 			if (4.rand<2,{
 				~chord=(~chord+1).mod(~chords.size);
 				["chord",~chord].postln;
@@ -106,7 +108,7 @@ s.waitForBoot({
 					3.do({ arg j;
 						var ind=~chords[~chord][j]+6;
 						var note=~scale.wrapAt(ind)+~noteMain;
-						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,note.asInteger,10);
+						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,note.asInteger,10+20.rand);
 					});
 					i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,~scale.wrapAt(~bass[~chord]+6)+~noteMain-12,10+30.rand);
 				});
