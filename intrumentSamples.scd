@@ -24,7 +24,7 @@ s.waitForBoot({
 			)
 		]);
 
-		snd = [GrainIn.ar(
+/*		snd = [GrainIn.ar(
 			numChannels: 1,
 			trigger: Impulse.kr(freq+0.1),
 			dur: dur/(freq+0.1),
@@ -36,10 +36,11 @@ s.waitForBoot({
 			dur: dur/(freq+0.2),
 			in: snd[1],
 			maxGrains: 64,
-		)];
+		)];*/
 
 		snd = snd * EnvGen.ar(Env.adsr(3,1,1,1));
-		//snd = HPF.ar(snd,800);
+		snd = HPF.ar(snd,100);
+		snd = LPF.ar(snd,12000);
 		ReplaceOut.ar(0,snd * Lag.kr(\db.kr(0),30).dbamp);
 	}.play;
 
@@ -79,6 +80,12 @@ s.waitForBoot({
 	~lastNote=0;
 	Routine {
 		s.sync;
+		// Buffer.read(Server.default,"/home/zns/Documents/internetarchive-downloader/internet_archive_downloads/aporee_6428_7973/1ocean.ogg",action:{
+		// 	arg b;
+		// 	{
+		// 		Out.ar(0,MouseY.kr()*PlayBuf.ar(2,b,BufRateScale.ir(b)));
+		// 	}.play;
+		// });
 		x=Synth.head(Server.default,\bass);
 		inf.do{
 			x.set(\freq,(~scale.wrapAt(~bass[~chord]+6)+~noteMain-12).midicps);
@@ -119,4 +126,6 @@ s.waitForBoot({
 });
 )
 
-~fx.set(\db,6.neg)
+
+
+~fx.set(\db,8)
