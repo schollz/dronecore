@@ -63,7 +63,7 @@ InstrumentSample {
 			arg out=0,pan=0,amp=1.0,
 			buf1,buf2,buf1mix=1,
 			t_trig=1,rate=1,
-			attack=0.01,decay=0.1,sustain=1.0,release=6,gate=1,
+			attack=0.01,decay=0.1,sustain=1.0,release=2,gate=1,
 			startPos=0;
 			var snd,snd2;
 			var frames1=BufFrames.ir(buf1);
@@ -82,7 +82,7 @@ InstrumentSample {
 			arg out=0,pan=0,amp=1.0,
 			buf1,buf2,buf1mix=1,
 			t_trig=1,rate=1,
-			attack=0.01,decay=0.1,sustain=1.0,release=6,gate=1,
+			attack=0.01,decay=0.1,sustain=1.0,release=2,gate=1,
 			startPos=0;
 			var snd,snd2;
 			var frames1=BufFrames.ir(buf1);
@@ -202,7 +202,7 @@ InstrumentSample {
 			if (rr2.isNil,{
 				rr2=1;
 			});
-			file2=file2++(rr2.rand+1).asString++".0.wav";			
+			file2=file2++(rr2.rand+1).asString++".0.wav";
 		});
 
 		// [file1,file2,amp,rate].postln;
