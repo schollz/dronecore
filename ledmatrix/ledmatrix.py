@@ -131,11 +131,10 @@ def show_bar(value, display_num=1):
     #   ---D---
     # 
     # 0bABCDEFG0
-    
+
     segment_patterns = [
         0x00,
         0b0000010,
-        0b0000110,
         0b0000110,
         0b0000111,
         0b1000111,
