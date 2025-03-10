@@ -9,8 +9,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hypebeast/go-osc/osc"
 	"github.com/lmittmann/tint"
 )
+
+var oscClient *osc.Client
+
+var mu sync.Mutex
+
+func sendOSCMessage() {
+	mu.Lock()
+	defer mu.Unlock()
+	msg := osc.NewMessage("/test")
+	msg.Append(int32(1))
+	msg.Append("Hello World")
+	oscClient.Send(msg)
+}
 
 type SharedData struct {
 	mu           sync.Mutex
