@@ -25,8 +25,8 @@ git clone --depth=1 --recursive --branch Version-3.13.0 https://github.com/super
 cd /tmp/sc3-plugins/sc3-plugins 
 mkdir -p build
 cd /tmp/sc3-plugins/sc3-plugins/build
-mkdir -p /home/pi/.local/share/SuperCollider/Extensions/
-cmake -DCMAKE_INSTALL_PREFIX=/home/pi/.local/share/SuperCollider/Extensions/ -DSC_PATH=/tmp/supercollider/SuperCollider-3.13.0-Source -DNATIVE=ON -DSUPERNOVA=OFF ..
+mkdir -p /home/timeandspace/.local/share/SuperCollider/Extensions/
+cmake -DCMAKE_INSTALL_PREFIX=/home/timeandspace/.local/share/SuperCollider/Extensions/ -DSC_PATH=/tmp/supercollider/SuperCollider-3.13.0-Source -DNATIVE=ON -DSUPERNOVA=OFF ..
 cmake --build . --config Release -- -j4
 cmake --build . --config Release --target install
 cd / 
@@ -41,7 +41,7 @@ cd portedplugins
 git submodule update --init --recursive 
 mkdir build 
 cd build
-cmake -DCMAKE_BUILD_TYPE='Release' -DSC_PATH=/tmp/supercollider/SuperCollider-3.13.0-Source/ -DCMAKE_INSTALL_PREFIX=/home/pi/.local/share/SuperCollider/Extensions/ -DSUPERNOVA=OFF -DNATIVE=ON ..
+cmake -DCMAKE_BUILD_TYPE='Release' -DSC_PATH=/tmp/supercollider/SuperCollider-3.13.0-Source/ -DCMAKE_INSTALL_PREFIX=/home/timeandspace/.local/share/SuperCollider/Extensions/ -DSUPERNOVA=OFF -DNATIVE=ON ..
 cmake --build . --config Release -- -j4
 cmake --build . --config Release --target install
 
