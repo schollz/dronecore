@@ -1,6 +1,6 @@
 (
 s.waitForBoot({
-	s.record;
+	// s.record;
 	~scale=(Scale.major.degrees-12)++(Scale.major.degrees)++(Scale.major.degrees+12);
 	~velocity=Bus.control(s,1);
 	{
@@ -43,7 +43,7 @@ s.waitForBoot({
 		snd = snd * EnvGen.ar(Env.adsr(3,1,1,1));
 		snd = HPF.ar(snd,100);
 		snd = LPF.ar(snd,12000);
-		ReplaceOut.ar(0,snd * Lag.kr(\db.kr(0),30).dbamp);
+		ReplaceOut.ar(0,snd * Lag.kr(\db.kr(0),6).dbamp);
 	}.play;
 
 	SynthDef(\bass, { arg freq = 440, amp = 0.5, gate = 1;
@@ -77,6 +77,8 @@ s.waitForBoot({
 	~instrument="claus_piano";
 	~noteMain=60;
 	~lastNote=0;
+	~playPiano=0;
+	~playStrings=1;
 	Routine {
 		s.sync;
 		// Buffer.read(Server.default,"/home/zns/Documents/internetarchive-downloader/internet_archive_downloads/aporee_6428_7973/1ocean.ogg",action:{
@@ -98,12 +100,16 @@ s.waitForBoot({
 						i.noteOff(1,~lastNote);
 					});
 					~lastNote=note;
-					i.noteOn(1,"/home/zns/Documents/dronecore/samples/string_spurs_swells",~lastNote-12,~velocity.getSynchronous/10);
+					if (~playStrings>0,{
+						i.noteOn(1,"/home/zns/Documents/dronecore/samples/string_spurs_swells",~lastNote-12,~velocity.getSynchronous/10);
+					});
 				},{
-					i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,
-						note.asInteger+(~octave.getSynchronous),
-						~velocity.getSynchronous
-					);
+					if (~playPiano>0,{
+						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,
+							note.asInteger+(~octave.getSynchronous),
+							~velocity.getSynchronous
+						);
+					});
 				});
 			});
 			([4,3,2,2,2.5,1.5,1,1,1,1,1,1,0.5,0.5,0.5,0.25,0,0,0,0].choose*4).wait;
@@ -114,17 +120,29 @@ s.waitForBoot({
 					3.do({ arg j;
 						var ind=~chords[~chord][j]+6;
 						var note=~scale.wrapAt(ind)+~noteMain;
-						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,note.asInteger,10+20.rand);
+						if (~playPiano>0,{
+							i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,note.asInteger,10+20.rand);
+						});
 					});
-					i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,~scale.wrapAt(~bass[~chord]+6)+~noteMain-12,10+30.rand);
+					if (~playPiano>0,{
+						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,~scale.wrapAt(~bass[~chord]+6)+~noteMain-12,10+30.rand);
+					});
 				});
 
 			});
 		};
 	}.play;
+	~oscReceiveData.free;
+	~oscReceiveData= OSCFunc({ arg msg, time;
+		[time, msg].postln;
+		if (msg[1].asString=="piano",{
+			~playPiano = msg[2].asInteger;
+			["playPiano",~playPiano].postln;
+		});
+	},'/data');
 });
 )
 
 
-
+~playPiano=1;
 ~fx.set(\db,12)
