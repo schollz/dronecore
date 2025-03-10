@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"math"
 	"math/rand"
@@ -39,7 +40,7 @@ func (sd *SharedData) Start() {
 				index := rand.Intn(len(sd.booleanArray))
 				sd.booleanArray[index] = !sd.booleanArray[index]
 				sd.logger.Info("Updated boolean array", slog.Int("index", index), slog.Bool("value", sd.booleanArray[index]))
-				for i := 0; i < 2; i++ {
+				for range []int{0, 1} {
 					select {
 					case sd.updateChan <- sd.booleanArray:
 					default:
@@ -82,7 +83,7 @@ func (m *Metronome) Start() {
 			case <-m.stopChan:
 				return
 			case <-ticker.C:
-				m.logger.Info("Metronome tick", slog.Int("BPM", int(m.bpm)))
+				m.logger.Debug("Metronome tick", slog.Int("BPM", int(m.bpm)))
 			case newData := <-m.sd.updateChan:
 				m.logger.Info("Metronome received updated data", slog.Any("data", newData))
 			}
@@ -128,14 +129,24 @@ func (dl *DataListener) Stop() {
 }
 
 func main() {
+	var logLevel string
+	flag.StringVar(&logLevel, "loglevel", "info", "set log level (info or debug)")
+	flag.Parse()
+
 	w := os.Stderr
-	logger := slog.New(tint.NewHandler(w, nil))
-	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
+	var logger *slog.Logger
+	if logLevel == "debug" {
+		logger = slog.New(tint.NewHandler(w, &tint.Options{
 			Level:      slog.LevelDebug,
 			TimeFormat: time.Kitchen,
-		}),
-	))
+		}))
+	} else {
+		logger = slog.New(tint.NewHandler(w, &tint.Options{
+			Level:      slog.LevelInfo,
+			TimeFormat: time.Kitchen,
+		}))
+	}
+	slog.SetDefault(logger)
 
 	sharedData := NewSharedData(logger)
 	metronome := NewMetronome(sharedData, 80, logger)
