@@ -33,6 +33,9 @@ DISPLAY_TEST = 0x0F
 # Set number of daisy-chained displays
 num_cascaded = 2  # Two MAX7219 displays
 
+# 7-segment bar levels
+BAR_LEVELS = [0x00, 0x08, 0x0C, 0x4C, 0x6C, 0x7C, 0x7E, 0x7F, 0xFF]
+
 # Character map for 7-segment representation
 CHAR_MAP = {
     "0": 0x7E, "1": 0x30, "2": 0x6D, "3": 0x79, "4": 0x33,
@@ -47,10 +50,10 @@ CHAR_MAP = {
 
 def send_to_max7219(register, data, display_num):
     """Send a command to a specific MAX7219 display in the daisy-chain."""
-    packet = [0x00] * (num_cascaded * 2)  # Create a blank command packet
+    packet = [0x00] * (num_cascaded * 2)
     packet[display_num * 2] = register
     packet[display_num * 2 + 1] = data
-    spi.xfer2(packet)  # Send SPI packet
+    spi.xfer2(packet)
 
 
 def initialize_max7219():
@@ -67,13 +70,12 @@ def clear_displays():
     """Clears all digits on both displays."""
     for display in range(num_cascaded):
         for reg in DIGIT_REGS:
-            send_to_max7219(reg, 0x00, display)  # Blank out all digits
+            send_to_max7219(reg, 0x00, display)
 
 
 def show_message(msg):
     """Display a static alphanumeric message across two MAX7219 displays."""
-    msg = msg.upper()[::-1]  # Convert to uppercase and reverse for correct order
-    
+    msg = msg.upper()[::-1]
     clear_displays()
     digit_index = 0
     display_num = 0
@@ -82,7 +84,6 @@ def show_message(msg):
         if char in CHAR_MAP:
             send_to_max7219(DIGIT_REGS[digit_index], CHAR_MAP[char], display_num)
             digit_index += 1
-            
             if digit_index >= 8:
                 display_num += 1
                 digit_index = 0
@@ -90,14 +91,47 @@ def show_message(msg):
                     break
 
 
+def show_bar(value, display_num=0):
+    """Display a horizontal bar across the first 8 digits of a MAX7219 display with fractional segment filling."""
+    if not 0.0 <= value <= 1.0:
+        raise ValueError("Value must be between 0.0 and 1.0")
+    
+    num_full_digits = int(value * 8)  # Determine how many full digits to light up
+    fractional_part = (value * 8) - num_full_digits  # Remaining fractional part
+    
+    #   ---A---
+    #  |       |
+    #  F       B
+    #  |       |
+    #   ---G---
+    #  |       |
+    #  E       C
+    #  |       |
+    #   ---D---
+    # 
+    # 0bABCDEFG0
+
+
+    segment_patterns = [0x00, 0b0000010, 0b0000110, 0b0000110, 0b0000111, 0b1000111, 0b1001111, 0b1101111, 0b1111111]  
+    fractional_index = int(fractional_part * (len(segment_patterns) - 1))
+    
+    for digit in range(8):  # Iterate through all 8 digits
+        if digit < num_full_digits:
+            send_to_max7219(DIGIT_REGS[7-digit], 0xFF, display_num)  # Fully lit segment
+        elif digit == num_full_digits and fractional_part > 0:
+            send_to_max7219(DIGIT_REGS[7-digit], segment_patterns[fractional_index], display_num)  # Partial segment
+        else:
+            send_to_max7219(DIGIT_REGS[7-digit], 0x00, display_num)  # Unlit segment
+
 def main():
-    """Main function to display a message across two daisy-chained MAX7219 displays."""
-    print("Displaying static message at FULL brightness. Press CTRL+C to exit.")
+    """Main function to demonstrate message and bar visualization."""
+    print("Displaying static message and bar. Press CTRL+C to exit.")
     try:
         initialize_max7219()
-        show_message("HELLO 42")  # Example alphanumeric message
-        while True:
-            time.sleep(1)  # Keep running
+        show_message("HELLO 42")
+        for i in range(101):
+            show_bar(float(i) / 100.0, display_num=1)
+            time.sleep(0.02)
     except KeyboardInterrupt:
         print("Exiting program")
     finally:
@@ -107,4 +141,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
