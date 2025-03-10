@@ -119,6 +119,19 @@ def show_bar(value, display_num=1):
     num_full_digits = int(value * 8)
     fractional_part = (value * 8) - num_full_digits
 
+
+    #   ---A---
+    #  |       |
+    #  F       B
+    #  |       |
+    #   ---G---
+    #  |       |
+    #  E       C
+    #  |       |
+    #   ---D---
+    # 
+    # 0bABCDEFG0
+    
     segment_patterns = [
         0x00,
         0b0000010,
