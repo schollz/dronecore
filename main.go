@@ -12,7 +12,7 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-var oscClient *osc.Client
+var oscClient = osc.NewClient("127.0.0.1", 57120)
 
 var mu sync.Mutex
 
@@ -22,6 +22,16 @@ func sendOSCMessage() {
 	msg := osc.NewMessage("/test")
 	msg.Append(int32(1))
 	msg.Append("Hello World")
+	oscClient.Send(msg)
+}
+
+func playMusicBox(note float32, velocity float32) {
+	mu.Lock()
+	defer mu.Unlock()
+	msg := osc.NewMessage("/data")
+	msg.Append("musicbox")
+	msg.Append(note)
+	msg.Append(velocity)
 	oscClient.Send(msg)
 }
 
@@ -105,6 +115,7 @@ type Metronome struct {
 	sd       *SharedData
 	bpm      float64
 	stopChan chan struct{}
+	state    UserData
 	logger   *slog.Logger
 }
 
@@ -128,7 +139,20 @@ func (m *Metronome) Start() {
 			case <-ticker.C:
 				m.logger.Debug("Metronome tick", slog.Int("BPM", int(m.bpm)))
 			case newData := <-m.sd.updateChan:
-				m.logger.Info("Metronome received updated data", slog.Any("data", newData))
+				for i := 0; i < 32; i++ {
+					if m.state.booleanArray[i] != newData.booleanArray[i] {
+						m.logger.Info("Metronome received updated boolean", slog.Int("index", i), slog.Bool("value", newData.booleanArray[i]))
+						if newData.booleanArray[i] {
+							playMusicBox(float32(i+60), 90.0)
+						}
+					}
+				}
+				for i := 0; i < 5; i++ {
+					if m.state.knobArray[i] != newData.knobArray[i] {
+						m.logger.Info("Metronome received updated knob", slog.Int("index", i), slog.Float64("value", newData.knobArray[i]))
+					}
+				}
+				m.state = newData
 			}
 		}
 	}()
@@ -159,8 +183,8 @@ func (dl *DataListener) Start() {
 			select {
 			case <-dl.stopChan:
 				return
-			case newData := <-dl.sd.updateChan:
-				dl.logger.Info("DataListener received updated data", slog.Any("data", newData))
+				// case newData := <-dl.sd.updateChan:
+				// 	dl.logger.Info("DataListener received updated data", slog.Any("data", newData))
 			}
 		}
 	}()
