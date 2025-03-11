@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log/slog"
 	"math"
-	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -26,21 +25,63 @@ func sendOSCMessage() {
 	oscClient.Send(msg)
 }
 
-type SharedData struct {
-	mu           sync.Mutex
+type UserData struct {
 	booleanArray [32]bool
-	stopChan     chan struct{}
-	updateChan   chan [32]bool
-	logger       *slog.Logger
+	knobArray    [5]float64
+}
+
+type SharedData struct {
+	mu         sync.Mutex
+	userData   UserData
+	stopChan   chan struct{}
+	updateChan chan UserData
+	logger     *slog.Logger
 }
 
 func NewSharedData(logger *slog.Logger) *SharedData {
-	return &SharedData{
-		booleanArray: [32]bool{},
-		stopChan:     make(chan struct{}),
-		updateChan:   make(chan [32]bool, 2),
-		logger:       logger,
+	s := &SharedData{
+		userData: UserData{
+			booleanArray: [32]bool{},
+			knobArray:    [5]float64{},
+		},
+		stopChan:   make(chan struct{}),
+		updateChan: make(chan UserData, 2),
+		logger:     logger,
 	}
+	// start a OSC server to listen for data
+	go func() {
+		addr := "127.0.0.1:8765"
+		d := osc.NewStandardDispatcher()
+		d.AddMsgHandler("/data", func(msg *osc.Message) {
+			// log the message
+			logger.Debug("Received OSC message", slog.Any("message", msg))
+			osc.PrintMessage(msg)
+			// unmarshal into UserData
+			var data UserData
+			data.booleanArray = [32]bool{}
+			data.knobArray = [5]float64{}
+			for i := 0; i < 32; i++ {
+				data.booleanArray[i] = msg.Arguments[i].(bool)
+			}
+			for i := 0; i < 5; i++ {
+				data.knobArray[i] = float64(msg.Arguments[32+i].(float32))
+			}
+			// update shared data
+			s.mu.Lock()
+			s.userData = data
+			s.mu.Unlock()
+			for i := 0; i < 2; i++ {
+				s.updateChan <- data
+			}
+		})
+
+		server := &osc.Server{
+			Addr:       addr,
+			Dispatcher: d,
+		}
+		server.ListenAndServe()
+	}()
+	return s
 }
 
 func (sd *SharedData) Start() {
@@ -49,18 +90,6 @@ func (sd *SharedData) Start() {
 			select {
 			case <-sd.stopChan:
 				return
-			case <-time.After(time.Duration(rand.Intn(5)+1) * time.Second):
-				sd.mu.Lock()
-				index := rand.Intn(len(sd.booleanArray))
-				sd.booleanArray[index] = !sd.booleanArray[index]
-				sd.logger.Info("Updated boolean array", slog.Int("index", index), slog.Bool("value", sd.booleanArray[index]))
-				for range []int{0, 1} {
-					select {
-					case sd.updateChan <- sd.booleanArray:
-					default:
-					}
-				}
-				sd.mu.Unlock()
 			}
 		}
 	}()
@@ -172,7 +201,7 @@ func main() {
 
 	quit := make(chan struct{})
 	go func() {
-		time.Sleep(30 * time.Second)
+		time.Sleep(3000 * time.Second)
 		close(quit)
 	}()
 
