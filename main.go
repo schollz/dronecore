@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log/slog"
 	"math"
+	"math/rand/v2"
 	"os"
 	"sync"
 	"time"
@@ -111,26 +112,59 @@ func (sd *SharedData) Stop() {
 	sd.logger.Info("SharedData stopped")
 }
 
+const numSteps = 32
+
 type Metronome struct {
-	sd       *SharedData
-	bpm      float64
-	stopChan chan struct{}
-	state    UserData
-	logger   *slog.Logger
+	sd                       *SharedData
+	bpm                      float64
+	stopChan                 chan struct{}
+	state                    UserData
+	logger                   *slog.Logger
+	notes                    [32][28]bool
+	position                 int
+	direction                int
+	randomize                bool
+	notesToPlay              [28]float32
+	probabilityDisappearance float64
+	firstTime                bool
 }
 
 func NewMetronome(sd *SharedData, bpm float64, logger *slog.Logger) *Metronome {
-	return &Metronome{
-		sd:       sd,
-		bpm:      bpm,
-		stopChan: make(chan struct{}),
-		logger:   logger,
+	// (Scale.major.degrees+(12*3))++(Scale.major.degrees+(12*4))++(Scale.major.degrees+(12*5))++(Scale.major.degrees+(12*6))
+	m := &Metronome{
+		sd:                       sd,
+		bpm:                      bpm,
+		stopChan:                 make(chan struct{}),
+		logger:                   logger,
+		notes:                    [32][28]bool{},
+		position:                 0,
+		direction:                1,
+		randomize:                false,
+		probabilityDisappearance: 0,
+		firstTime:                true,
+	}
+	m.notesToPlay = [28]float32{
+		36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83,
+	}
+	return m
+}
+
+func (m *Metronome) PrintNoteBoard() {
+	for j := 27; j >= 0; j-- {
+		for i := 0; i < numSteps; i++ {
+			if m.notes[i][j] {
+				print("X")
+			} else {
+				print("-")
+			}
+		}
+		print("\n")
 	}
 }
 
 func (m *Metronome) Start() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(int(math.Round(60.0/m.bpm))) * time.Second)
+		ticker := time.NewTicker(time.Duration(int(math.Round(60000000.0/m.bpm))) * time.Microsecond)
 		defer ticker.Stop()
 		for {
 			select {
@@ -138,18 +172,56 @@ func (m *Metronome) Start() {
 				return
 			case <-ticker.C:
 				m.logger.Debug("Metronome tick", slog.Int("BPM", int(m.bpm)))
+				// play current note
+				for i := 0; i < 28; i++ {
+					if m.notes[m.position][i] {
+						playMusicBox(m.notesToPlay[i], 90.0)
+						if rand.Float64() < m.probabilityDisappearance {
+							m.notes[m.position][i] = false
+							m.PrintNoteBoard()
+						}
+					}
+				}
+				// update position
+				if m.randomize {
+					m.position = int(math.Floor(16 * rand.Float64()))
+				} else {
+					m.position += m.direction
+				}
+				if m.position >= numSteps {
+					m.position -= numSteps
+				}
+				if m.position < 0 {
+					m.position += numSteps
+				}
 			case newData := <-m.sd.updateChan:
+				if m.firstTime {
+					m.state = newData
+					m.firstTime = false
+					continue
+				}
 				for i := 0; i < 32; i++ {
+					// 4 rows of 8
+					row := i / 8
+					col := i % 8
 					if m.state.booleanArray[i] != newData.booleanArray[i] {
 						m.logger.Info("Metronome received updated boolean", slog.Int("index", i), slog.Bool("value", newData.booleanArray[i]))
-						if newData.booleanArray[i] {
-							playMusicBox(float32(i+60), 90.0)
+						if col > 0 {
+							// recalculate index
+							index := ((3 - row) * 7) + (col - 1)
+							index = (index + 1) % 28
+							m.notes[m.position][index] = !m.notes[m.position][index]
+							m.PrintNoteBoard()
 						}
 					}
 				}
 				for i := 0; i < 5; i++ {
 					if m.state.knobArray[i] != newData.knobArray[i] {
 						m.logger.Info("Metronome received updated knob", slog.Int("index", i), slog.Float64("value", newData.knobArray[i]))
+						switch i {
+						case 0:
+							m.probabilityDisappearance = newData.knobArray[i]
+						}
 					}
 				}
 				m.state = newData
@@ -216,7 +288,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	sharedData := NewSharedData(logger)
-	metronome := NewMetronome(sharedData, 80, logger)
+	metronome := NewMetronome(sharedData, 90*4, logger)
 	dataListener := NewDataListener(sharedData, logger)
 
 	sharedData.Start()
