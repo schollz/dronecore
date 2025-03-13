@@ -149,21 +149,59 @@ def update_characters():
     app.processEvents()
 
 
+def show_bar(value):
+    if not 0.0 <= value <= 1.0:
+        raise ValueError("Value must be between 0.0 and 1.0")
+
+    num_full_digits = int(value * 8)
+    fractional_part = (value * 8) - num_full_digits
+
+    segment_patterns = [
+        0x00,
+        0b00000100,
+        0b00001100,
+        0b00001110,
+        0b10001110,
+        0b10011110,
+        0b11011110,
+        0b11111110,
+    ]
+    fractional_index = int(fractional_part * (len(segment_patterns) - 1))
+
+    for i in range(num_full_digits):
+        target_characters[i] = segment_patterns[-1]
+
+    if fractional_index:
+        target_characters[num_full_digits] = segment_patterns[fractional_index]
+
+
+def show_message(msg):
+    msg = msg.upper()
+    for i in range(8):
+        if i < len(msg):
+            target_characters[i] = CHAR_MAP.get(msg[i], 0)
+        else:
+            target_characters[i] = 0
+        time.sleep(0.2)
+
+
 def test_basic():
     def run():
-        for i in range(10):
-            target_characters[2] = 1 << i
-            time.sleep(0.2)
-        s = "HELLO"
-        for i, c in enumerate(s):
-            target_characters[i] = CHAR_MAP.get(c, 0)
-            time.sleep(0.2)  # Ensures progressive updates
+        show_bar(0.5)
+        time.sleep(0.5)
+        show_bar(0.25)
+        time.sleep(0.1)
+        show_bar(0.75)
         time.sleep(2)
 
-        s = "LIBBY"
-        for i, c in enumerate(s):
-            target_characters[i] = CHAR_MAP.get(c, 0)
-            time.sleep(0.2)  # Ensures progressive updates
+        show_message("HELLO")
+        time.sleep(2)
+
+        show_message("WORLD")
+        time.sleep(2)
+        show_message("WOTLD")
+        time.sleep(0.2)
+        show_message("WORLD")
         time.sleep(2)
 
     threading.Thread(target=run, daemon=True).start()
