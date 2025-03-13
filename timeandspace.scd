@@ -56,12 +56,11 @@ s.waitForBoot({
 				~is.noteOn(1,"/home/zns/Documents/dronecore/samples/musicbox",msg[2].asFloat,msg[3].asFloat);
 			});
 		},'/data');
-
-
+		~synths.at("final").set(\verb,0.0);
+		~synths.at("final").set(\db,-12);
+		"ready".postln;
 	}.play;
 
 });
 )
 
-~synths.at("final").set(\verb,0.0);
-~synths.at("final").set(\db,-12);
