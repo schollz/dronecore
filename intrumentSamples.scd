@@ -43,7 +43,7 @@ s.waitForBoot({
 		snd = snd * EnvGen.ar(Env.adsr(3,1,1,1));
 		snd = HPF.ar(snd,100);
 		snd = LPF.ar(snd,12000);
-		ReplaceOut.ar(0,snd * Lag.kr(\db.kr(0),6).dbamp);
+		ReplaceOut.ar(0,snd * Lag.kr(\db.kr(0),6).dbamp* 0.25);
 	}.play;
 
 	SynthDef(\bass, { arg freq = 440, amp = 0.5, gate = 1;
@@ -77,11 +77,11 @@ s.waitForBoot({
 	~instrument="claus_piano";
 	~noteMain=60;
 	~lastNote=0;
-	~playPiano=0;
+	~playPiano=1;
 	~playStrings=1;
 	Routine {
 		s.sync;
-		// Buffer.read(Server.default,"/home/zns/Documents/internetarchive-downloader/internet_archive_downloads/aporee_6428_7973/1ocean.ogg",action:{
+		// Buffer.read(Server.default,"/home/timeandspace/internetarchive-downloader/internet_archive_downloads/aporee_6428_7973/1ocean.ogg",action:{
 		// 	arg b;
 		// 	{
 		// 		Out.ar(0,MouseY.kr()*PlayBuf.ar(2,b,BufRateScale.ir(b)));
@@ -101,11 +101,11 @@ s.waitForBoot({
 					});
 					~lastNote=note;
 					if (~playStrings>0,{
-						i.noteOn(1,"/home/zns/Documents/dronecore/samples/string_spurs_swells",~lastNote-12,~velocity.getSynchronous/10);
+						i.noteOn(1,"/home/timeandspace/dronecore/samples/string_spurs_swells",~lastNote-12,~velocity.getSynchronous/10);
 					});
 				},{
 					if (~playPiano>0,{
-						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,
+						i.noteOn(1,"/home/timeandspace/dronecore/samples/"++~instrument,
 							note.asInteger+(~octave.getSynchronous),
 							~velocity.getSynchronous
 						);
@@ -121,11 +121,11 @@ s.waitForBoot({
 						var ind=~chords[~chord][j]+6;
 						var note=~scale.wrapAt(ind)+~noteMain;
 						if (~playPiano>0,{
-							i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,note.asInteger,10+20.rand);
+							i.noteOn(1,"/home/timeandspace/dronecore/samples/"++~instrument,note.asInteger,10+20.rand);
 						});
 					});
 					if (~playPiano>0,{
-						i.noteOn(1,"/home/zns/Documents/dronecore/samples/"++~instrument,~scale.wrapAt(~bass[~chord]+6)+~noteMain-12,10+30.rand);
+						i.noteOn(1,"/home/timeandspace/dronecore/samples/"++~instrument,~scale.wrapAt(~bass[~chord]+6)+~noteMain-12,10+30.rand);
 					});
 				});
 
@@ -144,5 +144,3 @@ s.waitForBoot({
 )
 
 
-~playPiano=1;
-~fx.set(\db,12)

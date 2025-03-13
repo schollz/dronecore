@@ -6,7 +6,7 @@ s.waitForBoot({
             buf.postln;
             SynthDef("player",{
                 var snd = PlayBuf.ar(2,buf.bufnum,BufRateScale.kr(buf.bufnum),loop:1);
-                Out.ar(0,snd*8);
+                Out.ar(0,snd*0.5);
             }).play;
     	});	
 	}.play;
