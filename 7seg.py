@@ -6,11 +6,13 @@
 #    "python-osc",
 # ]
 # ///
+import random
 import time
 import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QLabel
+import threading
+from PyQt6.QtWidgets import QApplication, QWidget, QHBoxLayout
 from PyQt6.QtGui import QPainter, QPolygonF, QBrush, QColor
-from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtCore import Qt, QPointF, QTimer
 
 SEGMENTS = {
     "A": [(20, 10), (80, 10), (70, 20), (30, 20)],
@@ -32,49 +34,6 @@ BIT_TO_SEGMENT = {
     0b00000010: "G",
     0b00000001: "DP",
 }
-
-
-class SevenSegmentDisplay(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.segments_on = set()
-        self.setFixedSize(100, 160)
-
-    def set_value(self, value):
-        self.segments_on = {
-            BIT_TO_SEGMENT[bit] for bit in BIT_TO_SEGMENT if value & bit
-        }
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        for segment, points in SEGMENTS.items():
-            painter.setBrush(
-                QBrush(
-                    QColor("#EE0000")
-                    if segment in self.segments_on
-                    else QColor("#20000000")
-                )
-            )
-            polygon = QPolygonF([QPointF(x, y) for x, y in points])
-            painter.drawPolygon(polygon)
-
-
-class DisplayEmulator(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("7-Segment Display Emulator")
-        layout = QHBoxLayout()
-        self.displays = [SevenSegmentDisplay() for _ in range(8)]
-        for display in self.displays:
-            layout.addWidget(display)
-        self.setLayout(layout)
-
-    def set_char(self, index, value):
-        if 0 <= index < len(self.displays):
-            self.displays[index].set_value(value)
-
 
 #   ---A---
 #  |       |
@@ -130,21 +89,97 @@ CHAR_MAP = {
 }
 
 
-def test_basic(app, emulator):
-    for i in range(10):
-        emulator.set_char(2, 1 << i)
-        app.processEvents()
-        time.sleep(0.05)
-    s = "VERB"
-    for i, c in enumerate(s):
-        emulator.set_char(i, CHAR_MAP.get(c, 0))
+current_characters = [0] * 8
+target_characters = [0] * 8
+
+
+class SevenSegmentDisplay(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.segments_on = set()
+        self.setFixedSize(100, 160)
+
+    def set_value(self, value):
+        self.segments_on = {
+            BIT_TO_SEGMENT[bit] for bit in BIT_TO_SEGMENT if value & bit
+        }
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for segment, points in SEGMENTS.items():
+            painter.setBrush(
+                QBrush(
+                    QColor("#EE0000")
+                    if segment in self.segments_on
+                    else QColor("#20000000")
+                )
+            )
+            polygon = QPolygonF([QPointF(x, y) for x, y in points])
+            painter.drawPolygon(polygon)
+
+
+class DisplayEmulator(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("7-Segment Display Emulator")
+        layout = QHBoxLayout()
+        self.displays = [SevenSegmentDisplay() for _ in range(8)]
+        for display in self.displays:
+            layout.addWidget(display)
+        self.setLayout(layout)
+
+    def set_char(self, index, value):
+        if 0 <= index < len(self.displays):
+            self.displays[index].set_value(value)
+
+
+def update_characters():
+    for i in range(8):
+        if current_characters[i] != target_characters[i]:
+            diff = current_characters[i] ^ target_characters[i]
+            differing_bits = [bit for bit in BIT_TO_SEGMENT if diff & bit]
+            if differing_bits:
+                bit_to_change = random.choice(
+                    differing_bits
+                )  # Choose a random bit to toggle
+                current_characters[i] ^= bit_to_change  # Toggle that bit
+                emulator.set_char(i, current_characters[i])
     app.processEvents()
-    time.sleep(2)
+
+
+def test_basic():
+    def run():
+        for i in range(10):
+            target_characters[2] = 1 << i
+            time.sleep(0.2)
+        s = "HELLO"
+        for i, c in enumerate(s):
+            target_characters[i] = CHAR_MAP.get(c, 0)
+            time.sleep(0.2)  # Ensures progressive updates
+        time.sleep(2)
+
+        s = "LIBBY"
+        for i, c in enumerate(s):
+            target_characters[i] = CHAR_MAP.get(c, 0)
+            time.sleep(0.2)  # Ensures progressive updates
+        time.sleep(2)
+
+    threading.Thread(target=run, daemon=True).start()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     emulator = DisplayEmulator()
     emulator.show()
-    test_basic(app, emulator)
+
+    current_characters = [0] * 8
+    target_characters = [0] * 8
+
+    timer = QTimer()
+    timer.timeout.connect(update_characters)
+    timer.start(100)  # Update every 50 milliseconds
+
+    test_basic()
     sys.exit(app.exec())
