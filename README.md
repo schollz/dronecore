@@ -1,5 +1,20 @@
 # dronecore
 
+## Pre-requisites
+
+```
+npm install -g pm2
+```
+
+## Start
+
+```
+pm2 flush
+pm2 delete all
+pm2 start ecosystem.config.js
+```
+
+
 ```
 jack -d alsa
 
@@ -9,6 +24,8 @@ air
 
 sclang -D timeandspace.scd
 ```
+
+
 
 Processes:
 - gpio_listener.py 

@@ -202,7 +202,6 @@ s.waitForBoot({
 		~synths.at("final").set(\verb,0.0);
 		~synths.at("final").set(\db,-12);
 		"ready".postln;
-		s.record;
 	}.play;
 
 });
