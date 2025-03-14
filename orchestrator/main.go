@@ -13,7 +13,7 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-var oscClient = osc.NewClient("127.0.0.1", 57120)
+var oscSupercollider = osc.NewClient("127.0.0.1", 57120)
 
 var mu sync.Mutex
 
@@ -23,7 +23,7 @@ func sendOSCMessage() {
 	msg := osc.NewMessage("/test")
 	msg.Append(int32(1))
 	msg.Append("Hello World")
-	oscClient.Send(msg)
+	oscSupercollider.Send(msg)
 }
 
 func playMusicBox(note float32, velocity float32) {
@@ -33,7 +33,7 @@ func playMusicBox(note float32, velocity float32) {
 	msg.Append("musicbox")
 	msg.Append(note)
 	msg.Append(velocity)
-	oscClient.Send(msg)
+	oscSupercollider.Send(msg)
 }
 
 type UserData struct {

@@ -1,4 +1,4 @@
-module tasm
+module orchestrator
 
 go 1.24
 

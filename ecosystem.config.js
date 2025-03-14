@@ -36,6 +36,14 @@ module.exports = {
             restart_delay: 1000, // Wait 3 seconds before restarting
         },
         {
+            name: "orchestrator",
+            script: "orchestrator",
+            cwd: "./orchestrator",
+            autorestart: true,
+            wait_ready: false,    // Waits until previous process is ready
+            restart_delay: 1000, // Wait 3 seconds before restarting
+        },
+        {
             name: "desktop_interface",
             script: ".venv/bin/python",
             args: "interface.py",
