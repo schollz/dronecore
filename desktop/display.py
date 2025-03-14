@@ -9,17 +9,20 @@
 import sys
 import random
 import time
-import sys
 import threading
+import asyncio
 from PyQt6.QtWidgets import QApplication, QWidget, QHBoxLayout
 from PyQt6.QtGui import QPainter, QPolygonF, QBrush, QColor
 from PyQt6.QtCore import Qt, QPointF, QTimer
+from pythonosc.dispatcher import Dispatcher
+from pythonosc.osc_server import AsyncIOOSCUDPServer
 
-# add ../utils/displayutils.py to sys.path
+# Add ../utils/displayutils.py to sys.path
 sys.path.append("../utils")
 sys.path.append("utils")
 from displayutils import CHAR_MAP
 
+# Segment mappings
 SEGMENTS = {
     "A": [(20, 10), (80, 10), (70, 20), (30, 20)],
     "B": [(80, 10), (90, 20), (90, 70), (80, 80)],
@@ -40,18 +43,6 @@ BIT_TO_SEGMENT = {
     0b00000010: "G",
     0b00000001: "DP",
 }
-
-#   ---A---
-#  |       |
-#  F       B
-#  |       |
-#   ---G---
-#  |       |
-#  E       C
-#  |       |
-#   ---D---
-#
-# 0bABCDEFG0
 
 current_characters = [0] * 8
 target_characters = [0] * 8
@@ -105,10 +96,8 @@ def update_characters():
             diff = current_characters[i] ^ target_characters[i]
             differing_bits = [bit for bit in BIT_TO_SEGMENT if diff & bit]
             if differing_bits:
-                bit_to_change = random.choice(
-                    differing_bits
-                )  # Choose a random bit to toggle
-                current_characters[i] ^= bit_to_change  # Toggle that bit
+                bit_to_change = random.choice(differing_bits)
+                current_characters[i] ^= bit_to_change
                 emulator.set_char(i, current_characters[i])
     app.processEvents()
 
@@ -132,11 +121,13 @@ def show_bar(value):
     ]
     fractional_index = int(fractional_part * (len(segment_patterns) - 1))
 
-    for i in range(num_full_digits):
-        target_characters[i] = segment_patterns[-1]
-
-    if fractional_index:
-        target_characters[num_full_digits] = segment_patterns[fractional_index]
+    for i in range(8):
+        if i < num_full_digits:
+            target_characters[i] = segment_patterns[-1]
+        elif i == num_full_digits:
+            target_characters[i] = segment_patterns[fractional_index]
+        else:
+            target_characters[i] = 0
 
 
 def show_message(msg):
@@ -171,7 +162,47 @@ def test_basic():
     threading.Thread(target=run, daemon=True).start()
 
 
+async def osc_handler(address, *args):
+    print(f"Received OSC message: {address}")
+    if address == "/bar":
+        show_bar(float(args[0]))
+    elif address == "/message":
+        show_message(args[0])
+
+
+def osc_callback(address, *args):
+    asyncio.create_task(
+        osc_handler(address, *args)
+    )  # Correctly schedules the async function
+
+
+async def init_main():
+    dispatcher = Dispatcher()
+    dispatcher.map("/bar", osc_callback)
+    dispatcher.map("/message", osc_callback)
+    server = AsyncIOOSCUDPServer(
+        ("0.0.0.0", 57122), dispatcher, asyncio.get_running_loop()
+    )
+    transport, protocol = await server.create_serve_endpoint()
+
+    try:
+        await asyncio.Future()  # Keeps the server running
+    finally:
+        transport.close()
+
+
+def run_asyncio_loop():
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init_main())
+
+
 if __name__ == "__main__":
+    # Start the asyncio OSC server in a separate thread
+    asyncio_thread = threading.Thread(target=run_asyncio_loop, daemon=True)
+    asyncio_thread.start()
+
+    # Start PyQt GUI
     app = QApplication(sys.argv)
     emulator = DisplayEmulator()
     emulator.show()
@@ -181,7 +212,8 @@ if __name__ == "__main__":
 
     timer = QTimer()
     timer.timeout.connect(update_characters)
-    timer.start(100)  # Update every 50 milliseconds
+    timer.start(100)  # Update every 100 milliseconds
 
-    test_basic()
+    threading.Thread(target=test_basic, daemon=True).start()
+
     sys.exit(app.exec())
