@@ -28,30 +28,56 @@ sclang -D timeandspace.scd
 
 
 Processes:
-- gpio_listener.py 
-  - sends osc events to the orchestrator.go
-- interace_emulator.py
-  - sends osc events to the orchestrator.go
+- raspberrypi/interface.py 
+  - sends osc to the orchestrator.go
+- desktop/interface.py
+  - sends osc to the orchestrator.go
 - orchestrator.go (osc 57121)
-  - sends osc events to sclang 
-  - sends osc events to userinterface.py
+  - sends osc to sclang 
+  - sends osc to desktop/display.py
+  - sends osc to raspberrypi/display.py
 - sclang (osc 57120) sends audio to jackd
 - jackd sends audio to speakers
-- 7seg_emulator.py (osc 57123) uses PyQT to display 7-segment display
-- userinteface.py (osc 57122)
-  - send messages to 7-segment display
-  - sends messages to 7seg_emulator.py
+- desktop/display.py (osc 57122)
+  - sends osc to desktop/7seg.py
+- desktop/7seg.py (osc 57123)
+  - display 7-segment display using PyQT
+- raspberry/display.py (osc 57122)
+  - sends spi commands to 7-segment display
 
 ```mermaid
 graph TD;
-    A[gpio_listener.py] -->|OSC Event| C[orchestrator.go:57121]
-    B[interface_emulator.py] -->|OSC Event| C
+    A[raspberrypi/interface.py] -->|OSC Event| C[orchestrator.go:57121]
+    B[desktop/interface.py] -->|OSC Event| C
     C -->|OSC Message| D[sclang:57120]
-    C -->|OSC Message| E[userinterface.py:57122]
+    C -->|OSC Message| H[desktop/display.py:57122]
+    C -->|OSC Message| K[raspberry/display.py:57122]
+    
     D -->|Audio Signal| F[jackd]
     F -->|Audio Output| G[Speakers]
-    E -->|OSC Message| H[7-Segment Display]
-    E -->|OSC Message| I[7seg_emulator.py:57123]
-    I -->|PyQT Render| J[7-Segment Emulator Display]
+    
+    H -->|OSC Message| I[desktop/7seg.py:57123]
+    I -->|PyQT Render| J[7-Segment Display]
+    
+    K -->|SPI Command| L[Physical 7-Segment Display]
+    
+    subgraph Desktop
+        B
+        H
+        I
+        J
+    end
+    
+    subgraph RaspberryPi
+        A
+        K
+        L
+    end
+    
+    subgraph Audio Processing
+        D
+        F
+        G
+    end
 
 ```

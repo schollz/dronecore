@@ -61,7 +61,7 @@ func NewSharedData(logger *slog.Logger) *SharedData {
 	}
 	// start a OSC server to listen for data
 	go func() {
-		addr := "127.0.0.1:8765"
+		addr := "127.0.0.1:57121"
 		d := osc.NewStandardDispatcher()
 		d.AddMsgHandler("/data", func(msg *osc.Message) {
 			// log the message
