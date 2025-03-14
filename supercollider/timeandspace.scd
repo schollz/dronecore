@@ -53,7 +53,7 @@ s.waitForBoot({
 			snd = snd * EnvGen.ar(Env.adsr(3,1,1,1));
 			snd = HPF.ar(snd,100);
 			snd = LPF.ar(snd,12000);
-			ReplaceOut.ar(0,snd * Lag.kr(\db.kr(-12),3).dbamp);
+			ReplaceOut.ar(0,snd * Lag.kr(\db.kr(12),3).dbamp);
 		}).send(s);
 
 
