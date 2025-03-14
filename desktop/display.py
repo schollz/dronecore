@@ -11,18 +11,16 @@ import random
 import time
 import threading
 import asyncio
-from PyQt6.QtWidgets import QApplication, QWidget, QHBoxLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout
 from PyQt6.QtGui import QPainter, QPolygonF, QBrush, QColor
 from PyQt6.QtCore import Qt, QPointF, QTimer
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import AsyncIOOSCUDPServer
 
-# Add ../utils/displayutils.py to sys.path
 sys.path.append("../utils")
 sys.path.append("utils")
 from displayutils import CHAR_MAP
 
-# Segment mappings
 SEGMENTS = {
     "A": [(20, 10), (80, 10), (70, 20), (30, 20)],
     "B": [(80, 10), (90, 20), (90, 70), (80, 80)],
@@ -44,8 +42,8 @@ BIT_TO_SEGMENT = {
     0b00000001: "DP",
 }
 
-current_characters = [0] * 8
-target_characters = [0] * 8
+current_characters = [[0] * 8 for _ in range(2)]
+target_characters = [[0] * 8 for _ in range(2)]
 
 
 class SevenSegmentDisplay(QWidget):
@@ -79,30 +77,44 @@ class DisplayEmulator(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("7-Segment Display Emulator")
-        layout = QHBoxLayout()
-        self.displays = [SevenSegmentDisplay() for _ in range(8)]
-        for display in self.displays:
-            layout.addWidget(display)
+        layout = QVBoxLayout()
+        self.displays = [[SevenSegmentDisplay() for _ in range(8)] for _ in range(2)]
+        for row in self.displays:
+            row_layout = QHBoxLayout()
+            for display in row:
+                row_layout.addWidget(display)
+            layout.addLayout(row_layout)
         self.setLayout(layout)
 
-    def set_char(self, index, value):
-        if 0 <= index < len(self.displays):
-            self.displays[index].set_value(value)
+    def set_char(self, display_index, char_index, value):
+        if 0 <= display_index < len(self.displays) and 0 <= char_index < len(
+            self.displays[display_index]
+        ):
+            self.displays[display_index][char_index].set_value(value)
 
 
 def update_characters():
-    for i in range(8):
-        if current_characters[i] != target_characters[i]:
-            diff = current_characters[i] ^ target_characters[i]
-            differing_bits = [bit for bit in BIT_TO_SEGMENT if diff & bit]
-            if differing_bits:
-                bit_to_change = random.choice(differing_bits)
-                current_characters[i] ^= bit_to_change
-                emulator.set_char(i, current_characters[i])
+    for display_index in range(2):
+        for i in range(8):
+            if (
+                current_characters[display_index][i]
+                != target_characters[display_index][i]
+            ):
+                diff = (
+                    current_characters[display_index][i]
+                    ^ target_characters[display_index][i]
+                )
+                differing_bits = [bit for bit in BIT_TO_SEGMENT if diff & bit]
+                if differing_bits:
+                    bit_to_change = random.choice(differing_bits)
+                    current_characters[display_index][i] ^= bit_to_change
+                    emulator.set_char(
+                        display_index, i, current_characters[display_index][i]
+                    )
     app.processEvents()
 
 
-def show_bar(value):
+def show_bar(display_index, value):
     if not 0.0 <= value <= 1.0:
         raise ValueError("Value must be between 0.0 and 1.0")
 
@@ -123,70 +135,46 @@ def show_bar(value):
 
     for i in range(8):
         if i < num_full_digits:
-            target_characters[i] = segment_patterns[-1]
+            target_characters[display_index][i] = segment_patterns[-1]
         elif i == num_full_digits:
-            target_characters[i] = segment_patterns[fractional_index]
+            target_characters[display_index][i] = segment_patterns[fractional_index]
         else:
-            target_characters[i] = 0
+            target_characters[display_index][i] = 0
 
 
-def show_message(msg):
+def show_message(display_index, msg):
     msg = msg.upper()
     for i in range(8):
         if i < len(msg):
-            target_characters[i] = CHAR_MAP.get(msg[i], 0)
+            target_characters[display_index][i] = CHAR_MAP.get(msg[i], 0)
         else:
-            target_characters[i] = 0
+            target_characters[display_index][i] = 0
         time.sleep(0.2)
-
-
-def test_basic():
-    def run():
-        show_bar(0.5)
-        time.sleep(0.5)
-        show_bar(0.25)
-        time.sleep(0.1)
-        show_bar(0.75)
-        time.sleep(2)
-
-        show_message("HELLO")
-        time.sleep(2)
-
-        show_message("WORLD")
-        time.sleep(2)
-        show_message("WOTLD")
-        time.sleep(0.2)
-        show_message("WORLD")
-        time.sleep(2)
-
-    threading.Thread(target=run, daemon=True).start()
 
 
 async def osc_handler(address, *args):
     print(f"Received OSC message: {address}")
-    if address == "/bar":
-        show_bar(float(args[0]))
-    elif address == "/message":
-        show_message(args[0])
+    if address == "/display":
+        index = int(args[0])
+        if args[1] == "bar":
+            show_bar(index, float(args[2]))
+        elif args[1] == "msg":
+            show_message(index, args[2])
 
 
 def osc_callback(address, *args):
-    asyncio.create_task(
-        osc_handler(address, *args)
-    )  # Correctly schedules the async function
+    asyncio.create_task(osc_handler(address, *args))
 
 
 async def init_main():
     dispatcher = Dispatcher()
-    dispatcher.map("/bar", osc_callback)
-    dispatcher.map("/message", osc_callback)
+    dispatcher.map("/display", osc_callback)
     server = AsyncIOOSCUDPServer(
         ("0.0.0.0", 57122), dispatcher, asyncio.get_running_loop()
     )
     transport, protocol = await server.create_serve_endpoint()
-
     try:
-        await asyncio.Future()  # Keeps the server running
+        await asyncio.Future()
     finally:
         transport.close()
 
@@ -198,22 +186,12 @@ def run_asyncio_loop():
 
 
 if __name__ == "__main__":
-    # Start the asyncio OSC server in a separate thread
     asyncio_thread = threading.Thread(target=run_asyncio_loop, daemon=True)
     asyncio_thread.start()
-
-    # Start PyQt GUI
     app = QApplication(sys.argv)
     emulator = DisplayEmulator()
     emulator.show()
-
-    current_characters = [0] * 8
-    target_characters = [0] * 8
-
     timer = QTimer()
     timer.timeout.connect(update_characters)
-    timer.start(100)  # Update every 100 milliseconds
-
-    threading.Thread(target=test_basic, daemon=True).start()
-
+    timer.start(100)
     sys.exit(app.exec())
