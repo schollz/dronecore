@@ -14,6 +14,9 @@ orchestator/orchestator:
 test:
 	pm2 start ecosystem.config.js
 
+run:
+	pm2 start ecosystem.raspberrypi.js
+
 stop:
 	pm2 stop all && pm2 delete all
 
