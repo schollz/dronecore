@@ -24,10 +24,10 @@ from displayutils import CHAR_MAP
 SEGMENTS = {
     "A": [(20, 10), (80, 10), (70, 20), (30, 20)],
     "B": [(80, 10), (90, 20), (90, 70), (80, 80)],
-    "C": [(80, 80), (90, 90), (90, 150), (80, 140)],
+    "C": [(80, 80), (90, 90), (90, 140), (80, 150)],
     "D": [(20, 150), (80, 150), (70, 140), (30, 140)],
-    "E": [(10, 90), (20, 80), (20, 140), (10, 150)],
-    "F": [(10, 20), (20, 10), (20, 70), (10, 80)],
+    "E": [(20, 80), (10, 90), (10, 140), (20, 150)],
+    "F": [(20, 10), (10, 20), (10, 70), (20, 80)],
     "G": [(20, 80), (80, 80), (70, 90), (30, 90)],
 }
 
@@ -66,7 +66,7 @@ class SevenSegmentDisplay(QWidget):
                 QBrush(
                     QColor("#EE0000")
                     if segment in self.segments_on
-                    else QColor("#20000000")
+                    else QColor("#00000000")
                 )
             )
             polygon = QPolygonF([QPointF(x, y) for x, y in points])
@@ -77,6 +77,7 @@ class DisplayEmulator(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("7-Segment Display Emulator")
+        self.setStyleSheet("background-color: white;")
         layout = QVBoxLayout()
         self.displays = [[SevenSegmentDisplay() for _ in range(8)] for _ in range(2)]
         for row in self.displays:
