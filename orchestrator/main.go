@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log/slog"
 	"math"
 	"math/rand/v2"
@@ -14,7 +15,7 @@ import (
 )
 
 var oscSupercollider = osc.NewClient("127.0.0.1", 57120)
-
+var oscDisplay = osc.NewClient("127.0.0.1", 57122)
 var mu sync.Mutex
 
 func sendOSCMessage() {
@@ -38,7 +39,7 @@ func playMusicBox(note float32, velocity float32) {
 
 type UserData struct {
 	booleanArray [32]bool
-	knobArray    [5]float64
+	knobArray    [5]float32
 }
 
 type SharedData struct {
@@ -53,7 +54,7 @@ func NewSharedData(logger *slog.Logger) *SharedData {
 	s := &SharedData{
 		userData: UserData{
 			booleanArray: [32]bool{},
-			knobArray:    [5]float64{},
+			knobArray:    [5]float32{},
 		},
 		stopChan:   make(chan struct{}),
 		updateChan: make(chan UserData, 2),
@@ -70,19 +71,78 @@ func NewSharedData(logger *slog.Logger) *SharedData {
 			// unmarshal into UserData
 			var data UserData
 			data.booleanArray = [32]bool{}
-			data.knobArray = [5]float64{}
+			data.knobArray = [5]float32{}
+			newData := UserData{}
 			for i := 0; i < 32; i++ {
-				data.booleanArray[i] = msg.Arguments[i].(bool)
+				newData.booleanArray[i] = msg.Arguments[i].(bool)
 			}
 			for i := 0; i < 5; i++ {
-				data.knobArray[i] = float64(msg.Arguments[32+i].(float32))
+				newData.knobArray[i] = msg.Arguments[i+32].(float32)
 			}
+
+			// look for changes in data
+			for i := 0; i < 32; i++ {
+				if s.userData.booleanArray[i] != newData.booleanArray[i] {
+					s.userData.booleanArray[i] = newData.booleanArray[i]
+					// show the switches
+					msg1 := ""
+					msg2 := ""
+					start := 0
+					finish := 16
+					if i >= 16 {
+						start = 16
+						finish = 32
+					}
+					if i < finish {
+						for j := start; j < finish; j++ {
+							if s.userData.booleanArray[j] {
+								if j < start+8 {
+									msg1 += "1"
+								} else {
+									msg2 += "1"
+								}
+							} else {
+								if j < start+8 {
+									msg1 += "0"
+								} else {
+									msg2 += "0"
+								}
+							}
+						}
+					}
+					// print change
+					logger.Info("Switches changed", slog.String("old", msg1), slog.String("new", msg2))
+					msg := osc.NewMessage("/display")
+					msg.Append(int32(0))
+					msg.Append("msg")
+					msg.Append(msg1)
+					err := oscDisplay.Send(msg)
+					if err != nil {
+						logger.Error("Error sending OSC message" + err.Error())
+					}
+					msg = osc.NewMessage("/display")
+					msg.Append(int32(1))
+					msg.Append("msg")
+					msg.Append(string(msg2))
+					oscDisplay.Send(msg)
+				}
+			}
+			// look for changes in knobs
+			for i := 0; i < 5; i++ {
+				if s.userData.knobArray[i] != newData.knobArray[i] {
+					fmt.Printf("Knob %d changed from %f to %f\n", i, s.userData.knobArray[i], newData.knobArray[i])
+					s.userData.knobArray[i] = newData.knobArray[i]
+					msg := osc.NewMessage("/display")
+					msg.Append(int32(1))
+					msg.Append(string("bar"))
+					msg.Append(float32(s.userData.knobArray[i]))
+					oscDisplay.Send(msg)
+				}
+			}
+
 			// update shared data
-			s.mu.Lock()
-			s.userData = data
-			s.mu.Unlock()
 			for i := 0; i < 2; i++ {
-				s.updateChan <- data
+				s.updateChan <- s.userData
 			}
 		})
 
@@ -125,7 +185,7 @@ type Metronome struct {
 	direction                int
 	randomize                bool
 	notesToPlay              [28]float32
-	probabilityDisappearance float64
+	probabilityDisappearance float32
 	firstTime                bool
 }
 
@@ -176,7 +236,7 @@ func (m *Metronome) Start() {
 				for i := 0; i < 28; i++ {
 					if m.notes[m.position][i] {
 						playMusicBox(m.notesToPlay[i], 90.0)
-						if rand.Float64() < m.probabilityDisappearance {
+						if rand.Float32() < m.probabilityDisappearance {
 							m.notes[m.position][i] = false
 							m.PrintNoteBoard()
 						}
@@ -217,7 +277,6 @@ func (m *Metronome) Start() {
 				}
 				for i := 0; i < 5; i++ {
 					if m.state.knobArray[i] != newData.knobArray[i] {
-						m.logger.Info("Metronome received updated knob", slog.Int("index", i), slog.Float64("value", newData.knobArray[i]))
 						switch i {
 						case 0:
 							m.probabilityDisappearance = newData.knobArray[i]

@@ -145,12 +145,13 @@ def show_bar(display_index, value):
 
 def show_message(display_index, msg):
     msg = msg.upper()
+    print(f"Displaying message: {msg} on display {display_index}")
     for i in range(8):
         if i < len(msg):
             target_characters[display_index][i] = CHAR_MAP.get(msg[i], 0)
         else:
             target_characters[display_index][i] = 0
-        time.sleep(0.2)
+        time.sleep(0.005)
 
 
 async def osc_handler(address, *args):
@@ -194,5 +195,5 @@ if __name__ == "__main__":
     emulator.show()
     timer = QTimer()
     timer.timeout.connect(update_characters)
-    timer.start(100)
+    timer.start(1)
     sys.exit(app.exec())

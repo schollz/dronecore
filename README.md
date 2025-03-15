@@ -47,11 +47,11 @@ Processes:
 
 ```mermaid
 graph TD;
-    A[raspberrypi/interface.py] -->|OSC Event| C[orchestrator.go:57121]
-    B[desktop/interface.py] -->|OSC Event| C
+    A[raspberrypi/interface.py] -->|OSC /data 32bool,5float| C[orchestrator.go:57121]
+    B[desktop/interface.py] -->|OSC /data 32bool,5float| C
     C -->|OSC Message| D[sclang:57120]
-    C -->|OSC Message| H[desktop/display.py:57122]
-    C -->|OSC Message| K[raspberry/display.py:57122]
+    C -->|OSC /display index msg/bar val| H[desktop/display.py:57122]
+    C -->|OSC /display index msg/bar val| K[raspberry/display.py:57122]
     
     D -->|Audio Signal| F[jackd]
     F -->|Audio Output| G[Speakers]

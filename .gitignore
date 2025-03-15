@@ -2,3 +2,4 @@ orchestrator/orchestrator
 ecosystem.config.js
 **pycache*
 **.log
+orchestrator/tmp/*
