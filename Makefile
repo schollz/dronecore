@@ -12,10 +12,12 @@ orchestator/orchestator:
 	cd orchestator && go build -v 
 
 test:
+	cp ecosystem.desktop.js ecosystem.config.js
 	pm2 start ecosystem.config.js
 
-run:
-	pm2 start ecosystem.raspberrypi.js
+pi:
+	cp ecosystem.raspberrypi.js ecosystem.config.js
+	pm2 start ecosystem.config.js
 
 stop:
 	pm2 stop all && pm2 delete all
