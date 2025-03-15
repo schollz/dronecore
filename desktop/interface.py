@@ -21,7 +21,7 @@ import sys
 
 all_buttons = [False] * 32
 all_knobs = [0.0] * 5
-client = udp_client.SimpleUDPClient("127.0.0.1", 8765)
+client = udp_client.SimpleUDPClient("127.0.0.1", 57121)
 
 
 class ToggleGrid(QWidget):
