@@ -11,7 +11,7 @@ raspberrypi/.venv:
 orchestator/orchestator:
 	cd orchestator && go build -v 
 
-test:
+desk:
 	cp ecosystem.desktop.js ecosystem.config.js
 	pm2 start ecosystem.config.js
 
