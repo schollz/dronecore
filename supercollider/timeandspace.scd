@@ -15,14 +15,14 @@ s.waitForBoot({
 	}.play;
 	Routine{
 		SynthDef("final",{
-			arg busTime, busSpace, busPlace, spacePlaceMix=0.0, spaceTimeMix = 1.0, verb=0;
+			arg busTime, busSpace, busPlace, spacePlaceMix=0.0, spaceTimeMix = 0.5, verb=0, volume = 1.0;
 			var snd, freq, dur;
-			var sndTime = In.ar(busTime,2);
+			var sndTime = In.ar(busTime,2)*0.1;
 			var sndSpace = In.ar(busSpace,2);
 			var sndPlace = In.ar(busPlace,2);
 			var sndGrains;
-			sndSpace = SelectX.ar(spacePlaceMix,[sndSpace,sndPlace]);
-			snd = SelectX.ar(spaceTimeMix,[sndTime,sndSpace]);
+			sndSpace = SelectX.ar(Lag.kr(spacePlaceMix),[sndSpace,sndPlace]);
+			snd = SelectX.ar(Lag.kr(spaceTimeMix),[sndSpace,sndTime]);
 			freq = LFNoise2.kr(1/3).range(0.5,10);
 			dur = LFNoise2.kr(1/3).range(0.5,4);
 
@@ -53,7 +53,7 @@ s.waitForBoot({
 			snd = snd * EnvGen.ar(Env.adsr(3,1,1,1));
 			snd = HPF.ar(snd,100);
 			snd = LPF.ar(snd,12000);
-			ReplaceOut.ar(0,snd * Lag.kr(\db.kr(12),3).dbamp*0.5);
+			ReplaceOut.ar(0,snd * Lag.kr(volume));
 		}).send(s);
 
 
@@ -91,7 +91,7 @@ s.waitForBoot({
 		buses.put("busTime",Bus.audio(s,2));
 		buses.put("busPlace",Bus.audio(s,2));
 
-		~is=InstrumentSample2.new(Server.default,buses.at("busTime"));
+		~isTime=InstrumentSample2.new(Server.default,buses.at("busTime"));
 		~isSpace=InstrumentSample2.new(Server.default,buses.at("busSpace"));
 
 		// add final bus to the end
@@ -118,7 +118,7 @@ s.waitForBoot({
 		~playStrings=1;
 		Routine {
 			s.sync;
-			~synths.put("bass",Synth.head(s,"bass",[
+			~synths.put("bass",Synth.head(~synths.at("final"),"bass",[
 				\busOut, buses.at("busSpace"),
 			]));
 			inf.do{
@@ -180,13 +180,21 @@ s.waitForBoot({
 		~oscReceiveData.free;
 		~oscReceiveData= OSCFunc({ arg msg, time;
 			[time, msg].postln;
+			if (msg[1].asString=="volume",{
+				var volume = msg[2].asFloat.dbamp;
+				if (volume<0.01,{ volume = 0.01 });
+				~synths.at("final").set(\volume,volume);
+			});
+			if (msg[1].asString=="spacetime",{
+				~synths.at("final").set(\spaceTimeMix,msg[2].asFloat);
+			});
 			if (msg[1].asString=="piano",{
 				~playPiano = msg[2].asInteger;
 				["playPiano",~playPiano].postln;
 			});
 			if (msg[1].asString=="musicbox",{
 				["noteon",msg[2]].postln;
-				~is.noteOn(1,"samples/musicbox",msg[2].asFloat,msg[3].asFloat);
+				~isTime.noteOn(1,"samples/musicbox",msg[2].asFloat,msg[3].asFloat);
 			});
 			if (msg[1].asString=="volume",{
 				~synths.at("final").set(\db,msg[2].asFloat);
@@ -199,7 +207,7 @@ s.waitForBoot({
 				~synths.at("bass").set(\volume,msg[2].asFloat);
 			});
 		},'/data');
-		~synths.at("final").set(\verb,0.0);
+		~synths.at("final").set(\verb,0.2);
 		~synths.at("final").set(\db,-12);
 		"ready".postln;
 	}.play;

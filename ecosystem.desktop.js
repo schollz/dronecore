@@ -11,7 +11,7 @@ module.exports = {
         {
             name: "jackd",
             script: "./jackd.sh",
-            cwd: "./supercollider",
+            cwd: "./desktop",
             autorestart: true,
             wait_ready: false,   // Waits until it's fully started
             restart_delay: 5000, // Wait 5 seconds before restarting

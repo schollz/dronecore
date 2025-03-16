@@ -8,10 +8,9 @@ raspberrypi/.venv:
 	cd raspberrypi && uv venv .venv && \
 	. .venv/bin/activate && uv pip install -r requirements.txt
 	
-orchestator/orchestator:
-	cd orchestator && go build -v 
 
-desk:
+desk: stop desktop/.venv
+	cd orchestrator/ && go build -v 
 	cp ecosystem.desktop.js ecosystem.config.js
 	pm2 start ecosystem.config.js
 

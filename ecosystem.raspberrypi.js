@@ -10,8 +10,8 @@ module.exports = {
         },
         {
             name: "jackd",
-            script: "./jackd_rpi.sh",
-            cwd: "./supercollider",
+            script: "./jackd.sh",
+            cwd: "./raspberrypi",
             autorestart: true,
             wait_ready: false,   // Waits until it's fully started
             restart_delay: 5000, // Wait 5 seconds before restarting

@@ -18,6 +18,10 @@ var oscSupercollider = osc.NewClient("127.0.0.1", 57120)
 var oscDisplay = osc.NewClient("127.0.0.1", 57122)
 var mu sync.Mutex
 
+func LinLin(val, inMin, inMax, outMin, outMax float32) float32 {
+	return (val-inMin)/(inMax-inMin)*(outMax-outMin) + outMin
+}
+
 func sendOSCMessage() {
 	mu.Lock()
 	defer mu.Unlock()
@@ -130,6 +134,37 @@ func NewSharedData(logger *slog.Logger) *SharedData {
 			// look for changes in knobs
 			for i := 0; i < 5; i++ {
 				if s.userData.knobArray[i] != newData.knobArray[i] {
+					// global knobs
+					if i == 4 {
+						// change volume
+						msg := osc.NewMessage("/data")
+						msg.Append("volume")
+						// map 0 to 1 to -96 to +12
+						msg.Append(LinLin(newData.knobArray[i], 0, 1, -48, 12))
+						oscSupercollider.Send(msg)
+						msg = osc.NewMessage("/display")
+						msg.Append(int32(0))
+						msg.Append(string("msg"))
+						msg.Append(string("volume"))
+						oscDisplay.Send(msg)
+					} else if i == 3 {
+						// space/time mix
+						msg := osc.NewMessage("/data")
+						msg.Append("spacetime")
+						msg.Append(newData.knobArray[i])
+						oscSupercollider.Send(msg)
+						msg = osc.NewMessage("/display")
+						msg.Append(int32(0))
+						msg.Append(string("msg"))
+						if newData.knobArray[i] < 0.5 {
+							// space
+							msg.Append(string("space"))
+						} else {
+							// time
+							msg.Append(string("itimme"))
+						}
+						oscDisplay.Send(msg)
+					}
 					fmt.Printf("Knob %d changed from %f to %f\n", i, s.userData.knobArray[i], newData.knobArray[i])
 					s.userData.knobArray[i] = newData.knobArray[i]
 					msg := osc.NewMessage("/display")
