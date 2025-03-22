@@ -35,4 +35,5 @@ def generate_packed_circles(container_diameter=75, circle_diameter=4, padding=2)
 
 # Generate and display the image
 # generate_packed_circles(75, 4, 2)
-generate_packed_circles(75, 5, 2)
+generate_packed_circles(75, 5, 1.75)
+# generate_packed_circles(35, 4, 1.5)
